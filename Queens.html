@@ -1,0 +1,135 @@
+<html>
+<head>
+</head>
+<body>
+<style>
+div{
+    float:left;
+    margin:30px;
+}
+</style>
+
+<script>
+var N=8;
+var Bar = function(size){
+    this.size=size;
+    this.row=[];
+    this.col=[];
+    this.lr=[];
+    this.rl=[];
+    this.winner=[];
+    this.solutionCount=0;
+    this.draw=true;
+}
+Bar.prototype.addWinner=function(win){
+    this.winner.push(win);
+    return this;
+}
+Bar.prototype.removeWinner=function(lose){
+    var index = this.winner.indexOf(lose);
+    if(index > -1){
+        this.winner.splice(index,1);
+    }
+}
+Bar.prototype.drawWinner=function(){
+    this.solutionCount++;
+    if(!this.draw)
+        return this;
+    var div =document.createElement("div");
+    var heading = document.createElement("h2");
+    heading.innerHTML="Solution "+this.solutionCount;
+    div.appendChild(heading);
+
+    var table = document.createElement("table");
+    for(var row=0; row<this.size;row++){
+        var tr = document.createElement("tr");
+        for(var col=0; col<this.size; col++){
+            var td =  document.createElement("td");
+            td.style.width="40px";
+            td.style.height="40px";
+            td.style.border="none";
+            td.style.backgroundColor="#AAA";
+            tr.appendChild(td);
+        }
+        table.appendChild(tr);
+    }
+    var trs = table.getElementsByTagName('tr');
+    for(var i=0; i<this.winner.length;i++){
+        var r=this.winner[i];
+        var row = trs[r.row];
+        var element=row.children[r.col];
+        element.style.backgroundColor='red';
+    }
+    div.appendChild(table);
+    document.body.appendChild(div);
+}
+Bar.prototype.validLocation=function(i,j){
+    return !(this.row[i] || this.col[j] || this.rl[this.getRL(i,j)] || this.lr[this.getLR(i,j)] )
+}
+Bar.prototype.unmarkLocation=function(i,j){
+    this.row[i]=false;
+    this.col[j]=false;
+    this.rl[this.getRL(i,j)]=false;
+    this.lr[this.getLR(i,j)]=false;
+}
+Bar.prototype.markLocation=function(i,j){
+    this.row[i]=true;
+    this.col[j]=true;
+    this.rl[this.getRL(i,j)]=true;
+    this.lr[this.getLR(i,j)]=true;
+}
+Bar.prototype.getLR=function(row,col){
+    var count = this.size * 2;
+    count++;
+    return count-(row + col);
+}
+Bar.prototype.getRL=function(row,col){
+    if(row===col){
+        return this.size;
+    }
+    if(row>col){
+        var dif = row-col;
+        return this.size-dif;
+    }
+    if(col>row){
+        var dif=col-row;
+        return this.size+dif;
+    }
+}
+
+function processRow(bar,row){
+    for(var i=0;i<N;i++){
+        //would the location be valid
+        if(bar.validLocation(row,i)){
+
+            var loc = {row:row,col:i};
+            //mark location
+            bar.markLocation(row,i);
+            bar.addWinner(loc);
+            //is the current row the last row
+            if(row===N-1){
+                bar.drawWinner();
+                bar.unmarkLocation(row,i);
+                bar.removeWinner(loc);
+                return;
+            }
+
+            processRow(bar,row+1)
+                bar.unmarkLocation(row,i);
+            bar.removeWinner(loc);
+        }
+    }
+}
+console.log("creating the bar");
+var date=new Date();
+var bar =  new Bar(N);
+
+processRow(bar,0);
+var dif = (new Date())-date;
+console.log("took:"+dif);
+console.log("finished");
+
+
+</script>
+</body>
+</html>
