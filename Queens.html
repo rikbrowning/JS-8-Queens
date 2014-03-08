@@ -3,39 +3,151 @@
 </head>
 <body>
 <style>
-div{
+.winner{
     float:left;
     margin:30px;
 }
+#menu{
+    position:fixed;
+    top:0px;
+    right:0px;
+    background-color:#888;
+    color:white;
+    padding:10px;
+}
+#toggle{
+    color:white;
+}
+#time{
+    color:white;
+    font-weight:bold;
+}
 </style>
+<div id="menu"><a id="toggle" href="#">Show Distinct</a>&nbsp;<span id="time"></span</div>
 
 <script>
 var N=8;
-var Bar = function(size){
+var Board = function(size){
     this.size=size;
     this.row=[];
     this.col=[];
     this.lr=[];
     this.rl=[];
-    this.winner=[];
+    this.currentWinner=[];
+    this.winners=[];
     this.solutionCount=0;
     this.draw=true;
 }
-Bar.prototype.addWinner=function(win){
-    this.winner.push(win);
+Board.prototype.rememberWinner=function(){
+    this.winners.push(this.currentWinner.slice(0));
     return this;
 }
-Bar.prototype.removeWinner=function(lose){
-    var index = this.winner.indexOf(lose);
+Board.prototype.addWinner=function(win){
+    this.currentWinner.push(win);
+    return this;
+}
+Board.prototype.removeWinner=function(lose){
+    var index = this.currentWinner.indexOf(lose);
     if(index > -1){
-        this.winner.splice(index,1);
+        this.currentWinner.splice(index,1);
+    }
+    return this;
+}
+Board.prototype.distinct=function(){
+    var len = this.size-1;
+    var results=this.winners.slice(0);//slice winners so we can manipulate without losing original list
+    var getIndexOf=function(arr,item,compareFunction){
+        for(var i=0;i<arr.length;i++){
+            var currentItem = arr[i];
+            //got current item so we need to compare the two
+            if(compareFunction(currentItem,item)){
+                return i;
+            }
+
+        }
+        return -1;
+    };
+    var compareLocations=function(loc,loc2){
+        return loc.row===loc2.row && loc.col===loc2.col;
+    };
+    var arrayMatch=function(array1,array2){
+        for(var i=0;i<array1.length;i++){
+            if(getIndexOf(array2,array1[i],compareLocations)===-1){
+                return false
+            }
+        }
+        return true;
+    }
+
+    while(results.length>0){
+        var current = results[0];
+        results.splice(0,1);//remove first result;
+        //{row,col}
+        var computedLocationsCount=0;
+        var computedLocations=[];
+        var reflect=function(point){
+            computedLocations[computedLocationsCount]=computedLocations[computedLocationsCount]||[];
+            computedLocations[computedLocationsCount].push(point);
+            computedLocationsCount++;
+
+            computedLocations[computedLocationsCount]=computedLocations[computedLocationsCount]||[];
+            computedLocations[computedLocationsCount].push({row:len-point.row,col:point.col});
+            computedLocationsCount++;
+
+            computedLocations[computedLocationsCount]=computedLocations[computedLocationsCount]||[];
+            computedLocations[computedLocationsCount].push({row:len-point.row,col:len-point.col});
+            computedLocationsCount++;
+
+            computedLocations[computedLocationsCount]=computedLocations[computedLocationsCount]||[];
+            computedLocations[computedLocationsCount].push({row:point.row,col:len-point.col});
+            computedLocationsCount++;
+        }
+        for(var i=0;i<current.length;i++){
+            var loc = current[i];
+            var computedLocationsCount=0;
+            var r90 ={col:len-loc.row,row:loc.col} ;
+            var r180 = {col:len-r90.row,row:r90.col};
+            var r270 = {col:len-r180.row,row:r180.col};
+            reflect(loc);
+            reflect(r90);
+            reflect(r180);
+            reflect(r270);
+        }
+        //got new computed locations
+        //find them in results and remove them :)
+        for(var j=0;j<computedLocations.length;j++){
+            var index = getIndexOf(results,computedLocations[j],arrayMatch);
+            if(index>-1){
+                results.splice(index,1);
+            }
+        }
+        this.drawWinner(current);
+
     }
 }
-Bar.prototype.drawWinner=function(){
+Board.prototype.emptyScreen=function(){
+    var tables = document.getElementsByClassName('winner');
+    this.solutionCount = 0;
+
+
+    while(tables.length>0){
+        tables[0].remove();
+    }
+    return this;
+}
+Board.prototype.drawWinners=function(){
+    for(var i=0;i<this.winners.length;i++){
+        this.drawWinner(this.winners[i]);
+    }
+    return this;
+}
+Board.prototype.drawWinner=function(winner){
     this.solutionCount++;
     if(!this.draw)
         return this;
+    winner = winner || this.currentWinner;
     var div =document.createElement("div");
+    div.classList.add("winner");
     var heading = document.createElement("h2");
     heading.innerHTML="Solution "+this.solutionCount;
     div.appendChild(heading);
@@ -54,36 +166,37 @@ Bar.prototype.drawWinner=function(){
         table.appendChild(tr);
     }
     var trs = table.getElementsByTagName('tr');
-    for(var i=0; i<this.winner.length;i++){
-        var r=this.winner[i];
+    for(var i=0; i<winner.length;i++){
+        var r=winner[i];
         var row = trs[r.row];
         var element=row.children[r.col];
         element.style.backgroundColor='red';
     }
     div.appendChild(table);
     document.body.appendChild(div);
+    return this;
 }
-Bar.prototype.validLocation=function(i,j){
+Board.prototype.validLocation=function(i,j){
     return !(this.row[i] || this.col[j] || this.rl[this.getRL(i,j)] || this.lr[this.getLR(i,j)] )
 }
-Bar.prototype.unmarkLocation=function(i,j){
+Board.prototype.unmarkLocation=function(i,j){
     this.row[i]=false;
     this.col[j]=false;
     this.rl[this.getRL(i,j)]=false;
     this.lr[this.getLR(i,j)]=false;
 }
-Bar.prototype.markLocation=function(i,j){
+Board.prototype.markLocation=function(i,j){
     this.row[i]=true;
     this.col[j]=true;
     this.rl[this.getRL(i,j)]=true;
     this.lr[this.getLR(i,j)]=true;
 }
-Bar.prototype.getLR=function(row,col){
+Board.prototype.getLR=function(row,col){
     var count = this.size * 2;
     count++;
     return count-(row + col);
 }
-Bar.prototype.getRL=function(row,col){
+Board.prototype.getRL=function(row,col){
     if(row===col){
         return this.size;
     }
@@ -97,37 +210,47 @@ Bar.prototype.getRL=function(row,col){
     }
 }
 
-function processRow(bar,row){
+function processRow(board,row){
     for(var i=0;i<N;i++){
         //would the location be valid
-        if(bar.validLocation(row,i)){
+        if(board.validLocation(row,i)){
 
             var loc = {row:row,col:i};
             //mark location
-            bar.markLocation(row,i);
-            bar.addWinner(loc);
+            board.markLocation(row,i);
+            board.addWinner(loc);
             //is the current row the last row
             if(row===N-1){
-                bar.drawWinner();
-                bar.unmarkLocation(row,i);
-                bar.removeWinner(loc);
+                board.rememberWinner();
+                board.unmarkLocation(row,i);
+                board.removeWinner(loc);
                 return;
             }
 
-            processRow(bar,row+1)
-                bar.unmarkLocation(row,i);
-            bar.removeWinner(loc);
+            processRow(board,row+1)
+                board.unmarkLocation(row,i);
+            board.removeWinner(loc);
         }
     }
 }
-console.log("creating the bar");
 var date=new Date();
-var bar =  new Bar(N);
-
-processRow(bar,0);
+var board =  new Board(N);
+processRow(board,0);
 var dif = (new Date())-date;
-console.log("took:"+dif);
-console.log("finished");
+document.getElementById("time").textContent=dif+"ms";
+var toggle = document.getElementById("toggle");
+toggle.onclick=function(){
+    toggle.classList.toggle("distinct")
+        if(toggle.classList.contains("distinct")){
+            board.emptyScreen().distinct();
+            toggle.textContent="Show All";
+        }
+        else{
+            board.emptyScreen().drawWinners();
+            toggle.textContent="Show Distinct";
+        }
+}
+board.emptyScreen().drawWinners();
 
 
 </script>
